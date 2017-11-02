@@ -1,6 +1,6 @@
-function y = inputanh(rgb)
-%INPUTANH Summary of this function goes here
-%   Detailed explanation goes here
+clc,clear,warning off
+rgb = imread('bien so image test\dang-ky-xe-bien-HN.jpg');
+tic
 gray=rgb2gray(rgb); % chuyen anh mau thanh anh xam
 gray=imadjust(gray);% can bang cuong do sang
 [row,col]=size(gray);% Lay kich thuoc anh
@@ -9,49 +9,76 @@ de=round(0.01*row);% khoang cong tru
 cm1=cp(1)-de:cp(1)+de;% khoang thoa man theo hang
 cm2=cp(2)-de:cp(2)+de;% khoang thoa man theo cot
 doituongnho=round(0.02*row*col);% so diem anh doi tuong nho
-biensonho=[round(0.08*row),round(0.08*19*row/14)];% bien so duoc cho la nho
+biensonho=[round(0.09*row),round(0.09*19*row/14)];% bien so duoc cho la nho
 thresh=0; % khoi tao nguong
 check=0; % khoi tao kiem tra
-while check==0
-    thresh=thresh+0.01;
-    if thresh==1
-        msgbox('Khong phat hien duoc bien so');
-        break;
-    else
-        bw=im2bw(gray,thresh);
+num = 1;
+grayC = {};
+KKK = {};
+for thresh = 0:0.1:1
+%     if thresh==1
+% %         msgbox('Khong phat hien duoc bien so');
+%         break;
+%     else
+    bw=im2bw(gray,thresh);
     bw=bwareaopen(bw,doituongnho);
     bw=imfill(bw,'holes');
     bw=imclearborder(bw,4);
-    bw=imopen(bw,strel('rectangle',biensonho));
+    bw1 = bw;
+    bw=imerode(bw,strel('rectangle',biensonho));
     [L,n]=bwlabel(bw);
-%     close all;imshow(bw);
     if n>0
-        for i=1:n
-            [row1,col1]=find(bw==i);
-            a=sum(ismember(cm1,row1));
-            b=sum(ismember(cm2,col1));
-            stat=regionprops((L==i),'BoundingBox');%xac dinh hinh chu nhat bao quanh
+        for j=1:n
+            bin = bwmorph(L==j,'remove',Inf);
+            [H peak] = findline(bin);
+            A = 0;
+            for i = 1:length(H)
+                C = min([abs(90 - H(i).theta),abs(0 - H(i).theta),abs(-90 - H(i).theta),abs(180 - H(i).theta)]);
+                A = A + C;
+            end
+            B = (A/length(H));
+            K = imrotate(L==j,-round(B),'bilinear','crop');
+            grayR = imrotate(gray,-round(B),'bilinear','crop');
+            M = imdilate(K,strel('rectangle',biensonho));
+            stat=regionprops((M),'BoundingBox','Centroid');
             try 
                 mat=stat.BoundingBox;
-                if a>0&&b>0&&mat(4)<mat(3)
+                if mat(4)<mat(3)
                     check=1;
-%                     bw=(L==i);
-                    break;
+                    Result(num) = stat;
+                    rgbcrop=imcrop(grayR,mat);
+                    KKK{1,num} = rgbcrop;
+                    num = num+1;
                 else
                     check=0;
                 end
-            catch e
-                msgbox(e.message);
             end
+%             imshow(uint8(M).*grayR);
+%             pause(0.1);
         end
     end
+%     end
+end
+Test = [];
+for i = 1: length(Result)
+    Test = [Test;Result(i).Centroid];
+end
+Test = floor(Test);
+ahihi = [];
+for i = 1: length(Test)
+    [x y] = find(Test == Test(i,:)); 
+    x = unique(x);
+    if length(x)>1
+        ahihi = [ahihi x];
     end
 end
-%img la anh nhi phan cua bang so 
-if thresh<1
-    rgbcrop=imcrop(rgb,mat);
-    y=rgbcrop;
-else
-    y=rgb;
+x = unique(ahihi);
+KKK(:,x(2:end)) = [];
+M = length(KKK);
+subplot(4,M,1:(4-1)*M);imshow(rgb);
+for i = 1:M
+    subplot(4,M,(4-1)*M+i);
+    imshow(KKK{1,i});
 end
-end
+toc
+% end
